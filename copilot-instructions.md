@@ -16,7 +16,7 @@ Tento soubor slouží k poskytování specifických instrukcí pro GitHub Copilo
 - Pokud je potřeba, rozšiř tento soubor o další pravidla dle potřeb projektu.
 
 
-Technologie pro vývoj
+Struktura APlikace
 Hlavní obrazovky (klient):
 
 1. Přihlášení/registrace
@@ -43,13 +43,6 @@ Hlavní obrazovky (servisní technik):
 - Správa klientů a kol
 - Statistiky a věrnostní program
 
-Technická architektura:
-
-První verze - Webová aplikace (funkční na webu) - základní prvky (minimum valuable product)
-
-Druhá verze - Integrace s AI
-
-Třetí verze - mobilní aplikace (Android, iOS)
 
 Prioritní vývoj
 
