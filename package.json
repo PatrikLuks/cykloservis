@@ -2,10 +2,22 @@
   "name": "cykloservis-root",
   "private": true,
   "scripts": {
-    "start": "./start.sh"
+    "start": "./start.sh",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
-    "cors": "^2.8.5"
+    "cors": "^2.8.5",
+    "node-fetch": "^3.3.2",
+    "openai": "^5.8.2"
+  },
+  "devDependencies": {
+    "@types/node-fetch": "^2.6.12",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "prettier": "^3.0.0"
   }
 }

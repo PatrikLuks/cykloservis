@@ -1,0 +1,228 @@
+openapi: 3.0.3
+info:
+  title: Cykloservis API
+  version: 1.0.0
+  description: REST API pro správu servisní knihy, uživatelů a kol
+servers:
+  - url: http://localhost:3001
+paths:
+  /api/register:
+    post:
+      summary: Registrace uživatele
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegister'
+      responses:
+        '200':
+          description: Úspěšná registrace
+        '409':
+          description: Uživatel již existuje
+  /api/login:
+    post:
+      summary: Přihlášení uživatele
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Úspěšné přihlášení
+        '401':
+          description: Neplatné přihlašovací údaje
+  /api/bikes:
+    get:
+      summary: Získat všechna kola uživatele
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seznam kol
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Bike'
+    post:
+      summary: Přidat nové kolo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BikeInput'
+      responses:
+        '201':
+          description: Kolo vytvořeno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bike'
+  /api/service-records:
+    get:
+      summary: Získat servisní záznamy
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Seznam záznamů
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceRecord'
+    post:
+      summary: Přidat servisní záznam
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceRecordInput'
+      responses:
+        '201':
+          description: Záznam vytvořen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceRecord'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserRegister:
+      type: object
+      required: [email, password, name]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        name:
+          type: string
+    UserLogin:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    Bike:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    BikeInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+    ServiceRecord:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        bikeId:
+          type: string
+        date:
+          type: string
+          format: date-time
+        description:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        bikeModel:
+          type: string
+        bikeBrand:
+          type: string
+        reminder:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        price:
+          type: number
+        serviceType:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date-time
+              changes:
+                type: object
+              author:
+                type: string
+    ServiceRecordInput:
+      type: object
+      required: [date, description]
+      properties:
+        date:
+          type: string
+          format: date-time
+        description:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        notes:
+          type: string
+        bikeModel:
+          type: string
+        bikeBrand:
+          type: string
+        reminder:
+          type: boolean
+        bikeId:
+          type: string
+        price:
+          type: number
+        serviceType:
+          type: string
