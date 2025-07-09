@@ -6,7 +6,7 @@ import serviceRecordsRouter from './routes/serviceRecords';
 import bikesRouter from './routes/bikes';
 import userRouter from './routes/user';
 import aiChatRouter from './routes/aiChat';
-import voiceflowChatRouter from './routes/voiceflowChat';
+// import voiceflowChatRouter from './routes/voiceflowChat';
 import knowledgeRouter from './routes/knowledge';
 import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler';
@@ -14,6 +14,21 @@ import { auditMiddleware } from './middleware/auditMiddleware';
 import auditLogRouter from './routes/auditLog';
 import passwordRouter from './routes/password';
 import shareRouter from './routes/share';
+import serviceRouter from './routes/service';
+import availabilityRouter from './routes/availability';
+import reservationRouter from './routes/reservation';
+import stravaRouter from './routes/strava';
+import aiRouter from './routes/ai';
+import { loginLimiter, registerLimiter, setPasswordLimiter } from './middleware/rateLimit';
+import notificationRouter from './routes/notification';
+import pushRouter from './routes/push'; // TS soubor existuje, ale chybí deklarace pro JS/TS
+// Pokud používáte TypeScript, ujistěte se, že importujete .ts soubor a ne .js
+// Pokud je projekt v čistém TypeScriptu, můžete bezpečně odstranit push.js nebo přidat deklaraci do push.d.ts
+// Pokud potřebujete, můžete přidat deklaraci:
+// declare module './routes/push';
+import notificationPreferencesRouter from './routes/notificationPreferences';
+import roleRouter from './routes/role';
+import remindersRouter from './routes/reminders';
 
 const app = express();
 
@@ -47,11 +62,26 @@ app.use('/api/service-records', serviceRecordsRouter);
 app.use('/api/bikes', bikesRouter);
 app.use('/api', userRouter);
 app.use('/api/ai-chat', aiChatRouter);
-app.use('/api/voiceflow-chat', upload.array('image', 5), voiceflowChatRouter);
+// app.use('/api/voiceflow-chat', upload.array('image', 5), voiceflowChatRouter);
 app.use('/api/knowledge', knowledgeRouter);
 app.use('/api/audit-logs', auditLogRouter);
 app.use('/api', passwordRouter);
 app.use('/api/share', shareRouter);
+app.use('/api/services', serviceRouter);
+app.use('/api/availability', availabilityRouter);
+app.use('/api/reservation', reservationRouter);
+app.use('/api/strava', stravaRouter);
+app.use('/api/ai', aiRouter);
+app.use('/api/notifications', notificationRouter);
+app.use('/api/push', pushRouter);
+app.use('/api/notification-preferences', notificationPreferencesRouter);
+app.use('/api/roles', roleRouter);
+app.use('/api/reminders', remindersRouter);
+
+// Rate limiting middleware
+app.use('/api/login', loginLimiter);
+app.use('/api/register', registerLimiter);
+app.use('/api/user/set-password', setPasswordLimiter);
 
 // Endpoint pro upload fotky
 app.post('/api/upload', upload.single('photo'), (req, res) => {

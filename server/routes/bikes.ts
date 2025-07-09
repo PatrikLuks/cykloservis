@@ -3,6 +3,7 @@ import { Bike } from '../models/Bike';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { bikeSchema, bikeUpdateSchema, validateBody } from '../validation';
+import { getUserId } from '../utils/getUserId';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -45,9 +46,10 @@ function toBikeResponse(bike: any) {
 
 // Endpoint pro získání všech kol uživatele
 router.get('/', authMiddleware, async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
   try {
-    const bikes = await Bike.find({ userId: req.user.id });
+    const bikes = await Bike.find({ userId });
     res.json(bikes.map(toBikeResponse));
   } catch (e) {
     next(e);
@@ -56,10 +58,21 @@ router.get('/', authMiddleware, async (req, res, next) => {
 
 // CRUD endpointy pro kola
 router.post('/', authMiddleware, validateBody(bikeSchema), async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
-  const { name, brand, model, year } = req.body;
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
   try {
-    const bike = await Bike.create({ userId: req.user.id, name, brand, model, year });
+    const bike = await Bike.create({
+      userId,
+      name: req.body.name,
+      brand: req.body.brand,
+      model: req.body.model,
+      year: req.body.year,
+      status: req.body.status,
+      parts: req.body.parts,
+      kilometers: req.body.kilometers,
+      serviceType: req.body.serviceType,
+      quickFix: req.body.quickFix,
+    });
     res.status(201).json(toBikeResponse(bike));
   } catch (e) {
     next(e);
@@ -67,10 +80,11 @@ router.post('/', authMiddleware, validateBody(bikeSchema), async (req, res, next
 });
 
 router.put('/:id', authMiddleware, validateBody(bikeUpdateSchema), async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
   try {
     const bike = await Bike.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
+      { _id: req.params.id, userId },
       req.body,
       { new: true }
     );
@@ -82,9 +96,10 @@ router.put('/:id', authMiddleware, validateBody(bikeUpdateSchema), async (req, r
 });
 
 router.delete('/:id', authMiddleware, async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
   try {
-    const bike = await Bike.findOneAndDelete({ _id: req.params.id, userId: req.user.id });
+    const bike = await Bike.findOneAndDelete({ _id: req.params.id, userId });
     if (!bike) return res.status(404).json({ error: 'Kolo nenalezeno.' });
     res.json({ message: 'Kolo bylo smazáno.', id: bike._id.toString() });
   } catch (e) {

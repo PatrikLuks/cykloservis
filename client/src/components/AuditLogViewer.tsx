@@ -12,17 +12,26 @@ const AuditLogViewer: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [userId, setUserId] = useState('');
   const [action, setAction] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const pageSize = 50;
 
   const fetchLogs = async () => {
     setLoading(true);
     const params = new URLSearchParams();
     if (userId) params.append('userId', userId);
     if (action) params.append('action', action);
-    params.append('limit', '100');
+    if (dateFrom) params.append('dateFrom', dateFrom);
+    if (dateTo) params.append('dateTo', dateTo);
+    params.append('limit', String(pageSize));
+    params.append('skip', String((page-1)*pageSize));
     const res = await fetch(`/api/audit-logs?${params.toString()}`);
     const data = await res.json();
-    setLogs(data);
+    setLogs(data.logs || data);
+    setTotal(data.total || 0);
     setLoading(false);
   };
 
@@ -53,7 +62,7 @@ const AuditLogViewer: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto p-4 bg-white dark:bg-gray-800 rounded shadow mt-8">
       <h2 className="text-xl font-bold mb-4">Audit log</h2>
-      <form className="flex gap-2 mb-4 flex-wrap" onSubmit={e => { e.preventDefault(); fetchLogs(); }}>
+      <form className="flex gap-2 mb-4 flex-wrap" onSubmit={e => { e.preventDefault(); setPage(1); fetchLogs(); }}>
         <input
           className="border rounded px-2 py-1 dark:bg-gray-900 dark:text-white"
           placeholder="userId"
@@ -65,6 +74,20 @@ const AuditLogViewer: React.FC = () => {
           placeholder="action (např. POST /api/service-records)"
           value={action}
           onChange={e => setAction(e.target.value)}
+        />
+        <input
+          type="date"
+          className="border rounded px-2 py-1 dark:bg-gray-900 dark:text-white"
+          value={dateFrom}
+          onChange={e => setDateFrom(e.target.value)}
+          title="Od"
+        />
+        <input
+          type="date"
+          className="border rounded px-2 py-1 dark:bg-gray-900 dark:text-white"
+          value={dateTo}
+          onChange={e => setDateTo(e.target.value)}
+          title="Do"
         />
         <button type="submit" className="bg-green-600 text-white px-4 py-1 rounded disabled:opacity-50 min-w-[90px]">Filtrovat</button>
         <button type="button" onClick={exportToCSV} className="bg-blue-600 text-white px-4 py-1 rounded min-w-[90px]">Export CSV</button>
@@ -93,6 +116,13 @@ const AuditLogViewer: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {total > pageSize && (
+        <div className="flex gap-2 my-2 items-center">
+          <button disabled={page===1} onClick={()=>{setPage(p=>p-1); fetchLogs();}} className="px-2 py-1 bg-gray-200 rounded">Předchozí</button>
+          <span>Strana {page} / {Math.ceil(total/pageSize)}</span>
+          <button disabled={page*pageSize>=total} onClick={()=>{setPage(p=>p+1); fetchLogs();}} className="px-2 py-1 bg-gray-200 rounded">Další</button>
         </div>
       )}
     </div>

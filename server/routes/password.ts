@@ -14,7 +14,7 @@ router.post('/forgot-password', async (req, res) => {
   const user = await User.findOne({ email });
   if (!user) return res.status(200).json({ message: 'Pokud e-mail existuje, instrukce byly odeslány.' });
   const token = crypto.randomBytes(32).toString('hex');
-  resetTokens[token] = { userId: user._id, expires: Date.now() + 1000 * 60 * 30 };
+  resetTokens[token] = { userId: String(user._id), expires: Date.now() + 1000 * 60 * 30 };
   // V produkci poslat e-mail, zde jen vracíme token pro testování
   res.json({ message: 'Instrukce byly odeslány.', token });
 });

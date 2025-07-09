@@ -2,7 +2,7 @@
 # Spustí backend i frontend paralelně a otevře frontend v prohlížeči
 
 cd server && npm run dev &
-cd ../client && npm run dev &
+cd client && npm run dev &
 
 sleep 3 # Počká na start Vite serveru
 

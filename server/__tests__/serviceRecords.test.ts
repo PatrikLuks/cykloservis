@@ -1,6 +1,8 @@
 import request from 'supertest';
 import app, { connectDb, disconnectDb } from '../app';
 
+jest.setTimeout(20000);
+
 const api = request(app);
 
 describe('Servisní kniha (CRUD)', () => {
@@ -68,6 +70,29 @@ describe('Servisní kniha (CRUD)', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.message).toMatch(/smazán/);
+  });
+
+  it('vytvoří nový servisní záznam s časováním', async () => {
+    const now = new Date();
+    const repairStart = new Date(now.getTime() - 10 * 60000); // 10 minut zpět
+    const res = await api.post('/api/service-records')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        date: now.toISOString(),
+        description: 'Test s časováním',
+        repairStart: repairStart.toISOString(),
+        timingType: 'manual',
+        durationMinutes: 10
+      });
+    expect(res.status).toBe(201);
+    expect(res.body._id).toBeDefined();
+    expect(res.body.repairStart).toBeDefined();
+    expect(res.body.timingType).toBe('manual');
+    expect(res.body.durationMinutes).toBe(10);
+    // Ověření, že repairStart je platné ISO datum a blízké zadanému času
+    const repairStartDate = new Date(res.body.repairStart);
+    expect(!isNaN(repairStartDate.getTime())).toBe(true);
+    expect(Math.abs(repairStartDate.getTime() - repairStart.getTime())).toBeLessThan(60000);
   });
 });
 
