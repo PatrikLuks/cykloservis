@@ -1,59 +1,83 @@
-# Instrukce pro Copilot
+# Copilot-instructions: Cykloservis – nejlepší možná strategie a zadání
 
-Tento soubor slouží k poskytování specifických instrukcí pro GitHub Copilot v rámci tohoto projektu.
+## 📱 Specifikace funkcí aplikace pro správu cykloservisu
 
-## Pravidla a doporučení
+### 🚀 Funkce aplikace
 
-1. **Dodržuj konvence projektu** – Respektuj existující styl kódu, pojmenovávání a strukturu složek.
-2. **Komentuj složitý kód** – Pokud generuješ složitější logiku, přidej krátký komentář vysvětlující účel.
-3. **Používej češtinu** – Komunikace a komentáře by měly být v češtině, pokud není uvedeno jinak.
-4. **Bezpečnost** – Nevkládej citlivé údaje ani klíče přímo do kódu.
-5. **Testování** – Pokud je to možné, generuj i odpovídající testy.
-6. **Dokumentace** – Pokud přidáváš nové funkce, aktualizuj nebo vytvoř dokumentaci.
+1. **Výběr mechanika před vstupem**
+   - Před použitím aplikace musí zákazník zvolit konkrétního mechanika.
+   - Mechanik je přiřazen ke konkrétnímu kolu a jeho servisním úkonům.
+2. **Navedení kola**
+   - Mechanik zadává stav kola a použité součástky.
+   - Volné textové pole pro zadání informací.
+   - 🔄 Priorita: jednoduchost – minimalizovat počet kroků a výběrů.
+3. **Stav kola**
+   - Stavové možnosti:
+     - ✅ Je v pořádku → ANO
+     - ❌ Není v pořádku → NE
+4. **Záznam kilometrů**
+   - Zákazník zadává počet najetých kilometrů.
+   - 🎯 Cíl: motivace k pravidelné údržbě
+   - Lze napojit na odměňovací systém.
+5. **Typy servisu**
+   - Sjednocená terminologie typů servisu:
+     - 🔧 Úvodní servis
+     - 🔧 Komplexní servis
+6. **Přidání kola**
+   - Provádí pouze mechanici.
+   - Mechanik přidává kolo do systému.
+7. **Kalendář a časování**
+   - Záznam data přidání kola.
+   - Záznam času, kdy mechanik:
+     - Začal pracovat
+     - Kolik času opravě věnoval
+   - 🕒 Možnost přidání času:
+     - Ručně
+     - Automaticky přes časovač
+8. **Rychlý servis (Quick Fix)**
+   - Možnost označit servis jako "Rychlo fix"
+9. **Verze aplikace**
+   - Lite verze:
+     - Obsahuje pouze základní funkce.
+     - Používá se např. v partnerském provozu s omezenými funkcemi.
 
-## Specifické instrukce
+---
 
-- Pokud je potřeba, rozšiř tento soubor o další pravidla dle potřeb projektu.
+## 🔥 Nejlepší strategie pro vedení projektu
 
+### 1. Doménový model a architektura
+- Navrhni entity: Uživatel, Mechanik, Kolo, Servisní úkon, Typ servisu, Záznam km, Časování, QuickFix, Odměny.
+- Jasně odděl role (zákazník, mechanik, admin) a jejich práva.
+- Všechny entity a API endpointy dokumentuj (OpenAPI/Swagger).
+- Modularizuj: oddělený frontend, backend, sdílené typy (monorepo, shared types).
 
-Struktura APlikace
-Hlavní obrazovky (klient):
+### 2. Implementace klíčových funkcí (prioritizace)
+1. Výběr mechanika a přidání kola (nejdříve základní workflow).
+2. Stav kola, typy servisu, záznam kilometrů (vše s důrazem na UX a jednoduchost).
+3. Kalendář, časování, Quick Fix, odměny.
+4. Lite verze a feature flags.
 
-1. Přihlášení/registrace
-2. Domovská stránka (přehled kol, rychlé akce, notifikace)
-3. Přidání/úprava kola (evidence, komponenty, fotky)
-4. Příjmový dotazník (interaktivní formulář, AI asistence, upload fotek)
-5. Servisní kniha (historie servisů, fotodokumentace, poznámky, účtenky)
-6. Poradenství a návody (foto-návody, videa, FAQ, chat s AI/servisákem)
-7. Objednání servisu (rezervace termínu, výběr technika, kalkulace)
-8. Věrnostní program (body, úrovně, odměny, výzvy)
-9. Sklad dílů (evidence, upozornění, fotky)
-10. Nastavení (profil, synchronizace, export dat)
+### 3. UX a UI
+- Minimalizuj počet kroků, vše navrhuj pro rychlé použití.
+- Optimalizuj pro mobilní zařízení.
+- Notifikace a motivace (odměny, připomínky servisu).
 
-Uživatelské flow (klient):
+### 4. Testování a robustnost
+- Pokryj klíčové scénáře jednotkovými, integračními a E2E testy.
+- Ověřuj validaci vstupů, autentizaci, autorizaci, audit logy.
+- Pravidelně refaktoruj a zvyšuj pokrytí testy.
 
-- Přihlášení → Domovská stránka → Výběr kola → Příjmový dotazník → AI návrh příčiny → Rezervace servisu → Notifikace → Servisní kniha → Věrnostní program → Poradenství/návody → Sklad dílů → Nastavení
+### 5. Nasazení, monitoring, dokumentace
+- CI/CD pipeline pro build, testy a nasazení.
+- Monitoring chyb, výkonu a uživatelského chování.
+- Dokumentace pro uživatele i vývojáře.
 
-Hlavní obrazovky (servisní technik):
+### 6. Iterativní vývoj
+- Každou funkci implementuj v malých, testovatelných krocích.
+- Průběžně validuj s uživateli a upravuj podle zpětné vazby.
+- Udržuj backlog a roadmapu podle priorit a reálných potřeb provozu.
 
-- Přihlášení/registrace
-- Přehled objednávek a servisů
-- Detail zakázky (dotazník, fotky, historie)
-- Komunikace s klientem (chat)
-- Správa klientů a kol
-- Statistiky a věrnostní program
+---
 
-
-Prioritní vývoj
-
-- Frontend: React (web) + React Native (mobil), UI framework (např. MUI, Tailwind), zelený design, animace (Lottie)
-- Backend: Node.js (Express/NestJS), REST API nebo GraphQL
-- Databáze: MongoDB (servisní kniha, uživatelé, kola, díly, věrnostní body)
-
-Další vývoj
-
-- AI: integrace s OpenAI API (návrhy příčin, chat, personalizace)
-- Cloud storage: fotky, videa (např. AWS S3)
-- Notifikace: Firebase/OneSignal
-- Integrace: Strava API, počasí (OpenWeatherMap)
-- Autentizace: OAuth2, možnost přihlášení přes Google/Apple
+## 🏆 Cíl
+Vytvořit robustní, bezpečnou, uživatelsky přívětivou a snadno rozšiřitelnou platformu pro cykloservis, která bude splňovat aktuální i budoucí potřeby zákazníků, mechaniků i provozovatelů.

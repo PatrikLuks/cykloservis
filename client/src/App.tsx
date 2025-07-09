@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './App.css';
 import ServiceList from './components/ServiceList';
 import ServiceDetailModal from './components/ServiceDetailModal';
@@ -6,13 +6,18 @@ import ServiceForm from './components/ServiceForm';
 import ServiceFilterForm from './components/ServiceFilterForm';
 import RemindersAlert from './components/RemindersAlert';
 import BikeManager from './components/BikeManager';
-import ProfileSection from './components/ProfileSection';
 import Dashboard from './components/Dashboard';
 import Loader from './components/Loader';
 import AIChat from './components/AIChat';
 import AuditLogViewer from './components/AuditLogViewer';
 import SharedServiceBook from './components/SharedServiceBook';
-import type { Bike, ServiceRecord, ShareToken } from '../../shared/types';
+import Calendar from './components/Calendar';
+import TeamManager from './components/TeamManager';
+import Notifications from './components/Notifications';
+import { MechanicProvider } from './context/MechanicContext';
+import MechanicSelector from './components/MechanicSelector';
+import AddBikeForm from './components/AddBikeForm';
+import type { Bike, ServiceRecord, ShareToken, User } from '../../shared/types';
 
 interface Toast {
   id: number;
@@ -27,9 +32,9 @@ function App() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [protectedMsg, setProtectedMsg] = useState('');
-  const [section, setSection] = useState<'dashboard' | 'service' | 'advice' | 'intake' | 'rewards' | 'ai' | 'bikes' | 'profile'>('dashboard');
+  const [section, setSection] = useState<'dashboard' | 'service' | 'advice' | 'intake' | 'rewards' | 'ai' | 'bikes' | 'profile' | 'calendar' | 'team' | 'notifications'>('dashboard');
   const [serviceRecords, setServiceRecords] = useState<ServiceRecord[]>([]);
-  const [serviceForm, setServiceForm] = useState({ date: '', description: '', notes: '', bikeModel: '', bikeBrand: '', reminder: false, bikeId: '', price: '', serviceType: '' });
+  const [serviceForm, setServiceForm] = useState({ date: '', description: '', notes: '', bikeModel: '', bikeBrand: '', reminder: false, bikeId: '', price: '', serviceType: '', quickFix: false, durationMinutes: 0 });
   const [serviceError, setServiceError] = useState('');
   const [servicePhotos, setServicePhotos] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -45,13 +50,30 @@ function App() {
   const [shareTokens, setShareTokens] = useState<ShareToken[]>([]);
   const [shareTokensLoading, setShareTokensLoading] = useState(false);
   const [shareTokensError, setShareTokensError] = useState<string | null>(null);
+  const [servicemen, setServicemen] = useState<User[]>([]); // pro výběr servisáka
+  const [services, setServices] = useState<any[]>([]); // seznam servisů pro ownera
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedMechanic, setSelectedMechanic] = useState<import('./types/bikeTypes').Mechanic | null>(null);
+  const [selectedBike, setSelectedBike] = useState<Bike | null>(null);
   // Loading stav pro přihlášení
   const [loading, setLoading] = useState(false);
   const [serviceLoading, setServiceLoading] = useState(false);
   const [bikesLoading, setBikesLoading] = useState(false);
   const [dark, setDark] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches);
   const [isAdmin, setIsAdmin] = useState(false); // pro demo, v produkci podle role uživatele
+  const [calendarServicemanId, setCalendarServicemanId] = useState<string | null>(null);
+  const [stravaActivities, setStravaActivities] = useState<any[]>([]);
+  const [showSetPassword, setShowSetPassword] = useState(false);
+  const [setPwEmail, setSetPwEmail] = useState('');
+  const [setPwValue, setSetPwValue] = useState('');
+  const [setPwMsg, setSetPwMsg] = useState('');
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [durationMinutes, setDurationMinutes] = useState<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [timerStart, setTimerStart] = useState<number | null>(null);
   const toastId = React.useRef(0);
+  // Feature flag pro lite verzi
+  const [liteMode, setLiteMode] = useState(false);
 
   useEffect(() => {
     // Při načtení zkus načíst token z localStorage
@@ -83,6 +105,21 @@ function App() {
     // eslint-disable-next-line
   }, [user, token]);
 
+  // Načíst aktivity ze Stravy při přechodu do sekce 'service'
+  useEffect(() => {
+    const fetchStrava = async () => {
+      if (token && section === 'service') {
+        try {
+          const res = await fetch('http://localhost:3001/api/strava/activities', { headers: { Authorization: `Bearer ${token}` } });
+          const data = await res.json();
+          if (Array.isArray(data)) setStravaActivities(data);
+          else setStravaActivities([]);
+        } catch { setStravaActivities([]); }
+      }
+    };
+    fetchStrava();
+  }, [token, section]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -103,6 +140,7 @@ function App() {
     e.preventDefault();
     setError('');
     setLoading(true);
+    setShowSetPassword(false);
     const url = isLogin ? '/api/login' : '/api/register';
     const body = isLogin ? { email: form.email, password: form.password } : form;
     try {
@@ -112,7 +150,15 @@ function App() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Chyba');
+      if (!res.ok) {
+        if (data.error && data.error.toLowerCase().includes('heslo nenastaveno')) {
+          setShowSetPassword(true);
+          setSetPwEmail(form.email);
+          setSetPwMsg('Zadejte nové heslo pro aktivaci účtu.');
+          return;
+        }
+        throw new Error(data.error || 'Chyba');
+      }
       setUser(data.name || form.name);
       setToken(data.token);
       localStorage.setItem('jwt', data.token);
@@ -123,6 +169,27 @@ function App() {
       showToast(err.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSetPwMsg('');
+    try {
+      const res = await fetch('http://localhost:3001/api/user/set-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: setPwEmail, password: setPwValue })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Chyba při nastavování hesla');
+      setShowSetPassword(false);
+      setSetPwValue('');
+      setSetPwMsg('Heslo nastaveno, nyní se můžete přihlásit.');
+      showToast('Heslo nastaveno, nyní se můžete přihlásit.', 'success');
+    } catch (err: any) {
+      setSetPwMsg(err.message);
+      showToast(err.message, 'error');
     }
   };
 
@@ -175,7 +242,7 @@ function App() {
   const fetchReminders = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:3001/api/service-reminders', {
+      const res = await fetch('http://localhost:3001/api/reminders/upcoming', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -203,12 +270,30 @@ function App() {
     }
   };
 
+  // Načíst seznam servisáků pro kalendář
+  useEffect(() => {
+    if (token && section === 'calendar') {
+      fetch('http://localhost:3001/api/users?role=serviceman', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setServicemen(data); });
+    }
+  }, [token, section]);
+
+  // Načíst servisy pro ownera
+  useEffect(() => {
+    if (token && user && section === 'team') {
+      fetch('http://localhost:3001/api/services', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setServices(data); });
+    }
+  }, [token, user, section]);
+
   const handleServiceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const target = e.target as HTMLInputElement;
-    const { name, value, type } = target;
+    const { name, value, type, checked } = target;
     setServiceForm((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? target.checked : value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
@@ -256,13 +341,20 @@ function App() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ ...serviceForm, photos: photoUrls }),
+        body: JSON.stringify({
+          ...serviceForm,
+          bikeId: selectedBike?.id,
+          photos: photoUrls,
+          quickFix: serviceForm.quickFix || false,
+          durationMinutes: durationMinutes || 0,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Chyba');
       setServiceRecords((prev) => [data, ...prev]);
-      setServiceForm({ date: '', description: '', notes: '', bikeModel: '', bikeBrand: '', reminder: false, bikeId: '', price: '', serviceType: '' });
+      setServiceForm({ date: '', description: '', notes: '', bikeModel: '', bikeBrand: '', reminder: false, bikeId: '', price: '', serviceType: '', quickFix: false, durationMinutes: 0 });
       setServicePhotos([]);
+      setDurationMinutes(0);
       showToast('Servisní záznam byl úspěšně přidán.', 'success');
     } catch (err: any) {
       setServiceError(err.message);
@@ -438,7 +530,7 @@ function App() {
   };
 
   // Akce pro dashboard
-  const handleAddBike = () => setSection('bikes');
+  const goToAddBikeSection = () => setSection('bikes');
   const handleAddService = () => setSection('service');
 
   // Detekce veřejného sdíleného pohledu podle URL
@@ -447,6 +539,173 @@ function App() {
     const token = sharedMatch[1];
     return <SharedServiceBook token={token} />;
   }
+
+  useEffect(() => {
+    if (token) fetchShareTokens();
+  }, [token]);
+
+  // Handlery pro sdílené odkazy
+  const fetchShareTokens = async () => {
+    setShareTokensLoading(true);
+    setShareTokensError(null);
+    try {
+      const res = await fetch('http://localhost:3001/api/share-tokens', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Chyba');
+      setShareTokens(data);
+    } catch (err: any) {
+      setShareTokensError(err.message);
+    } finally {
+      setShareTokensLoading(false);
+    }
+  };
+  const handleRevokeShareToken = async (tokenId: string) => {
+    if (!window.confirm('Opravdu zneplatnit tento odkaz?')) return;
+    setShareTokensLoading(true);
+    try {
+      const res = await fetch(`http://localhost:3001/api/share-tokens/${tokenId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error('Chyba při rušení odkazu');
+      setShareTokens((prev) => prev.filter((t) => t.token !== tokenId));
+    } catch (err: any) {
+      setShareTokensError(err.message);
+    } finally {
+      setShareTokensLoading(false);
+    }
+  };
+
+  // Helper pro získání role uživatele (string nebo objekt)
+  function getUserRole(user: string | null | { role?: string }): string | undefined {
+    if (!user) return undefined;
+    if (typeof user === 'string') return undefined;
+    return user.role;
+  }
+
+  // Pokud není vybrán mechanik, zobrazit výběr
+  if (!selectedMechanic) {
+    return (
+      <MechanicProvider>
+        <MechanicSelector onSelect={setSelectedMechanic} />
+      </MechanicProvider>
+    );
+  }
+
+  // Handler pro přidání kola (napojený na backend)
+  const handleAddBike = async (bike: any) => {
+    if (!token) return;
+    try {
+      const res = await fetch('http://localhost:3001/api/bikes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: bike.name,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Chyba při přidávání kola');
+      setBikes(prev => [data, ...prev]);
+      showToast('Kolo bylo přidáno.', 'success');
+    } catch (err: any) {
+      showToast(err.message, 'error');
+    }
+  };
+
+  // Pokud je vybrán mechanik, ale není vybráno kolo, zobrazit BikeManager a výběr kola
+  if (selectedMechanic && !selectedBike) {
+    return (
+      <MechanicProvider>
+        <main>
+          <AddBikeForm mechanic={selectedMechanic} onAdd={handleAddBike} />
+          <BikeManager
+            bikes={bikes}
+            setBikes={setBikes}
+            token={token}
+            showToast={showToast}
+          />
+          <div className="mt-4">
+            <h3 className="font-bold mb-2">Vyberte kolo pro servis</h3>
+            <ul>
+              {bikes.map(bike => (
+                <li key={bike.id}>
+                  <button className="underline text-blue-600" onClick={() => setSelectedBike(bike)}>
+                    {bike.name} {bike.model && `(${bike.model})`} {bike.brand && `- ${bike.brand}`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </main>
+      </MechanicProvider>
+    );
+  }
+
+  // Pokud je vybrán mechanik i kolo, zobrazit servisní knihu pro toto kolo
+  if (selectedMechanic && selectedBike) {
+    return (
+      <MechanicProvider>
+        <main>
+          <h2 className="text-xl font-bold mb-4">Servisní kniha pro kolo: {selectedBike.name}</h2>
+          <ServiceForm
+            serviceForm={{ ...serviceForm, bikeId: selectedBike.id, durationMinutes }}
+            servicePhotos={servicePhotos}
+            uploading={uploading}
+            bikes={[selectedBike]}
+            handleServiceChange={handleServiceChange}
+            handleServiceSelectChange={handleServiceSelectChange}
+            handlePhotosChange={handlePhotosChange}
+            handleServiceSubmit={handleServiceSubmit}
+            stravaActivities={stravaActivities}
+            onStartTimer={() => {
+              setTimerRunning(true);
+              setTimerStart(Date.now());
+              timerRef.current = setInterval(() => {
+                setDurationMinutes(Math.floor((Date.now() - (timerStart || Date.now())) / 60000));
+              }, 1000);
+            }}
+            onStopTimer={() => {
+              setTimerRunning(false);
+              if (timerRef.current) clearInterval(timerRef.current);
+              if (timerStart) {
+                setDurationMinutes(Math.floor((Date.now() - timerStart) / 60000));
+              }
+              setTimerStart(null);
+            }}
+            timerRunning={timerRunning}
+            durationMinutes={durationMinutes}
+            setDurationMinutes={setDurationMinutes}
+          />
+          <ServiceList
+            serviceRecords={serviceRecords.filter(r => r.bikeId === selectedBike.id)}
+            editingId={editingId}
+            editForm={editForm}
+            bikes={[selectedBike]}
+            startEdit={startEdit}
+            handleEditSubmit={handleEditSubmit}
+            handleEditChange={handleEditChange}
+            handleEditSelectChange={handleEditSelectChange}
+            cancelEdit={cancelEdit}
+            handleEditPhotosChange={handleEditPhotosChange}
+            editPhotos={editPhotos}
+            editUploading={editUploading}
+            handleServiceDelete={handleServiceDelete}
+            openDetail={openDetail}
+          />
+          <button className="mt-4 text-sm text-blue-600 underline" onClick={() => setSelectedBike(null)}>
+            Zpět na výběr kola
+          </button>
+        </main>
+      </MechanicProvider>
+    );
+  }
+
+  return (
+    <MechanicProvider>
+      <main>
+        <AddBikeForm mechanic={selectedMechanic} onAdd={handleAddBike} />
+        <BikeManager bikes={bikes} setBikes={setBikes} token={token} showToast={showToast} />
+        {/* ...další obsah aplikace... */}
+      </main>
+    </MechanicProvider>
+  );
 
   if (user) {
     return (
@@ -487,6 +746,11 @@ function App() {
                 <button onClick={() => setSection('intake')} className={`px-3 py-1 rounded ${section==='intake' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>Příjmový formulář</button>
                 <button onClick={() => setSection('rewards')} className={`px-3 py-1 rounded ${section==='rewards' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>Odměny</button>
                 <button onClick={() => setSection('ai')} className={`px-3 py-1 rounded ${section==='ai' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>AI chat</button>
+                <button onClick={() => setSection('calendar')} className={`px-3 py-1 rounded ${section==='calendar' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>Kalendář</button>
+                <button onClick={() => setSection('notifications')} className={`px-3 py-1 rounded ${section==='notifications' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>Notifikace</button>
+                {getUserRole(user) === 'owner' && (
+                  <button onClick={() => setSection('team')} className={`px-3 py-1 rounded ${section==='team' ? 'bg-green-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}>Správa týmu</button>
+                )}
               </nav>
               <section>
                 {section === 'dashboard' && (
@@ -494,7 +758,7 @@ function App() {
                     bikes={bikes}
                     serviceRecords={serviceRecords}
                     reminders={reminders}
-                    onAddBike={handleAddBike}
+                    onAddBike={goToAddBikeSection}
                     onAddService={handleAddService}
                   />
                 )}
@@ -525,6 +789,7 @@ function App() {
                       handleServiceSelectChange={handleServiceSelectChange}
                       handlePhotosChange={handlePhotosChange}
                       handleServiceSubmit={handleServiceSubmit}
+                      stravaActivities={stravaActivities}
                     />
                     {serviceError && <p style={{ color: 'red' }}>{serviceError}</p>}
                     <ServiceList
@@ -588,6 +853,48 @@ function App() {
                   {shareTokens.length === 0 && !shareTokensLoading && <div>Žádné aktivní sdílené odkazy.</div>}
                 </div>
               )}
+              {section === 'calendar' && user && token && (
+                <div>
+                  <button onClick={() => setSection('dashboard')} style={{ margin: 12 }}>Zpět na dashboard</button>
+                  <div style={{ marginBottom: 12 }}>
+                    <label>Vyberte servisáka: </label>
+                    <select value={calendarServicemanId || ''} onChange={e => setCalendarServicemanId(e.target.value)}>
+                      <option value="">-- vyberte --</option>
+                      {servicemen.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                  {calendarServicemanId && (
+                    <Calendar
+                      user={servicemen.find(s => s.id === calendarServicemanId)!}
+                      servicemanId={calendarServicemanId as string}
+                      token={token as string}
+                      showToast={showToast}
+                    />
+                  )}
+                </div>
+              )}
+              {section === 'team' && getUserRole(user) === 'owner' && token && (
+                <div>
+                  <h2 className="text-xl font-bold mb-4">Správa týmu</h2>
+                  <div style={{ marginBottom: 16 }}>
+                    <label>Vyberte servis: </label>
+                    <select value={selectedServiceId || ''} onChange={e => setSelectedServiceId(e.target.value)}>
+                      <option value="">-- vyberte --</option>
+                      {services.map(s => (
+                        <option key={s._id} value={s._id}>{s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {selectedServiceId && (
+                    <TeamManager serviceId={selectedServiceId as string} token={token as string} />
+                  )}
+                </div>
+              )}
+              {section === 'notifications' && (
+                <Notifications token={token} />
+              )}
               <hr />
               <button onClick={fetchProtected}>Načíst chráněný obsah</button>
               {protectedMsg && <p style={{ color: 'blue' }}>{protectedMsg}</p>}
@@ -631,49 +938,52 @@ function App() {
             ))}
           </div>
         )}
+        {/* Přepínač režimu v UI */}
+        <div className="fixed top-2 right-2 z-50">
+          <button
+            className={`px-3 py-1 rounded ${liteMode ? 'bg-yellow-400 text-black' : 'bg-gray-200'}`}
+            onClick={() => setLiteMode((v) => !v)}
+            title="Přepnout Lite verzi"
+          >
+            {liteMode ? 'Lite verze: ON' : 'Lite verze: OFF'}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="App">
-      <h1>Cykloservis</h1>
-      <form onSubmit={handleSubmit} className="card">
-        {!isLogin && (
-          <input
-            type="text"
-            name="name"
-            placeholder="Jméno"
-            value={form.name}
-            onChange={handleChange}
-            required
-          />
-        )}
-        <input
-          type="email"
-          name="email"
-          placeholder="E-mail"
-          value={form.email}
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Heslo"
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
-        <button type="submit">{isLogin ? 'Přihlásit se' : 'Registrovat se'}</button>
-      </form>
-      <button onClick={() => setIsLogin((v) => !v)} style={{ marginTop: 8 }}>
-        {isLogin ? 'Nemáte účet? Registrace' : 'Máte účet? Přihlášení'}
-      </button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <p className="read-the-docs">
-        Po přihlášení lze volat chráněné API.
-      </p>
+      {showSetPassword ? (
+        <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded shadow">
+          <h2 className="text-xl font-bold mb-4">Nastavení hesla</h2>
+          <form onSubmit={handleSetPassword} className="flex flex-col gap-4">
+            <input type="email" value={setPwEmail} disabled className="border rounded px-3 py-2 bg-gray-100" />
+            <input type="password" placeholder="Nové heslo" value={setPwValue} onChange={e => setSetPwValue(e.target.value)} required className="border rounded px-3 py-2" />
+            <button type="submit" className="bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">Nastavit heslo</button>
+          </form>
+          {setPwMsg && <p className="mt-2 text-blue-700">{setPwMsg}</p>}
+        </div>
+      ) : (
+        <div className="max-w-md mx-auto mt-16 p-8 bg-white rounded shadow">
+          <h1 className="text-2xl font-bold mb-4 text-green-700">Cykloservis</h1>
+          {loading ? <Loader /> : (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              {!isLogin && (
+                <input type="text" name="name" placeholder="Jméno" value={form.name} onChange={handleChange} required className="border rounded px-3 py-2" />
+              )}
+              <input type="email" name="email" placeholder="E-mail" value={form.email} onChange={handleChange} required className="border rounded px-3 py-2" />
+              <input type="password" name="password" placeholder="Heslo" value={form.password} onChange={handleChange} required className="border rounded px-3 py-2" />
+              <button type="submit" className="bg-green-600 text-white py-2 rounded hover:bg-green-700 transition">{isLogin ? 'Přihlásit se' : 'Registrovat se'}</button>
+            </form>
+          )}
+          <button onClick={() => setIsLogin((v) => !v)} className="mt-4 text-sm text-blue-600 hover:underline">
+            {isLogin ? 'Nemáte účet? Registrace' : 'Máte účet? Přihlášení'}
+          </button>
+          {error && <p className="text-red-600 mt-2">{error}</p>}
+          <p className="text-gray-500 mt-4 text-sm">Po přihlášení lze volat chráněné API.</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -194,6 +194,10 @@ const ServiceList: React.FC<ServiceListProps> = ({
                 {rec.recordType && <span> | Typ: {rec.recordType}</span>}
                 {rec.status && <span> | Stav: {rec.status}</span>}
                 {rec.updatedAt && <span> | Aktualizováno: {new Date(rec.updatedAt).toLocaleString()}</span>}
+                {rec.durationMinutes !== undefined && <span> | Čas: {rec.durationMinutes} min</span>}
+                {rec.quickFix && <span style={{ color: 'orange', fontWeight: 'bold' }}> | Rychlo fix</span>}
+                {rec.repairStart && <span> | Začátek: {new Date(rec.repairStart).toLocaleString()}</span>}
+                {rec.timingType && <span> | Typ měření: {rec.timingType === 'manual' ? 'Ruční' : 'Automatické'}</span>}
                 <button onClick={() => startEdit(rec)} style={{ marginLeft: 8 }}>Upravit</button>
                 <button onClick={() => handleServiceDelete(rec._id)} style={{ marginLeft: 8 }}>Smazat</button>
                 <button onClick={() => openDetail(rec)} style={{ marginLeft: 8 }}>Detail</button>

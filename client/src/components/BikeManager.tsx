@@ -96,6 +96,15 @@ const BikeManager: React.FC<BikeManagerProps> = ({ bikes, setBikes, token, showT
       <ul>
         {bikes.map((bike) => (
           <li key={bike.id}>
+            <div>
+              <b>{bike.name}</b> {bike.model && `(${bike.model})`} {bike.brand && `- ${bike.brand}`} {bike.year && `, ${bike.year}`}
+              {bike.createdAt && <span className="ml-2">Přidáno: {new Date(bike.createdAt).toLocaleDateString()}</span>}
+              <span className="ml-2">Stav: <b>{bike.status === 'OK' ? 'ANO' : 'NE'}</b></span>
+              {bike.kilometers !== undefined && <span className="ml-2">Km: {bike.kilometers}</span>}
+              {bike.parts && <span className="ml-2">Součástky: {bike.parts}</span>}
+              {bike.serviceType && <span className="ml-2">Typ servisu: {bike.serviceType}</span>}
+              {bike.quickFix && <span className="ml-2 text-orange-600 font-bold">Rychlo fix</span>}
+            </div>
             {editingId === bike.id ? (
               <form onSubmit={handleEditSubmit} style={{ display: 'inline' }}>
                 <input type="text" name="name" value={editForm?.name || ''} onChange={handleEditChange} required />
@@ -107,7 +116,6 @@ const BikeManager: React.FC<BikeManagerProps> = ({ bikes, setBikes, token, showT
               </form>
             ) : (
               <>
-                <b>{bike.name}</b> {bike.model && `(${bike.model})`} {bike.brand && `- ${bike.brand}`} {bike.year && `, ${bike.year}`}
                 <button onClick={() => startEdit(bike)} style={{ marginLeft: 8 }}>Upravit</button>
                 <button onClick={() => handleDelete(bike.id)} style={{ marginLeft: 8 }}>Smazat</button>
               </>

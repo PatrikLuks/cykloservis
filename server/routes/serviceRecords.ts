@@ -3,6 +3,7 @@ import { ServiceRecord } from '../models/ServiceRecord';
 import { User } from '../models/User';
 import { Request, Response, NextFunction } from 'express';
 import { serviceRecordSchema, serviceRecordUpdateSchema, validateBody } from '../validation';
+import { getUserId } from '../utils/getUserId';
 
 declare module 'express-serve-static-core' {
   interface Request {
@@ -58,15 +59,16 @@ router.get('/', authMiddleware, async (req, res, next) => {
   }
 });
 
-router.post('/', authMiddleware, validateBody(serviceRecordSchema), async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
-  const { date, description, photos, notes, bikeModel, bikeBrand, reminder, bikeId, price, serviceType } = req.body;
+router.post('/', authMiddleware, async (req, res, next) => {
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
+  const { date, description, photos, notes, bikeModel, bikeBrand, reminder, bikeId, price, serviceType, recordType, status, quickFix, durationMinutes, repairStart, timingType } = req.body;
   if (!date || !description) {
     return res.status(400).json({ error: 'Vyplňte datum a popis.' });
   }
   try {
     const record = await ServiceRecord.create({
-      userId: req.user!.id,
+      userId,
       date,
       description,
       photos: photos || [],
@@ -76,7 +78,13 @@ router.post('/', authMiddleware, validateBody(serviceRecordSchema), async (req, 
       reminder: !!reminder,
       bikeId,
       price,
-      serviceType
+      serviceType,
+      recordType,
+      status,
+      quickFix,
+      durationMinutes,
+      repairStart,
+      timingType
     });
     res.status(201).json(record);
   } catch (e) {
@@ -85,14 +93,15 @@ router.post('/', authMiddleware, validateBody(serviceRecordSchema), async (req, 
 });
 
 router.put('/:id', authMiddleware, validateBody(serviceRecordUpdateSchema), async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
   try {
     // Najdi původní záznam
-    const original = await ServiceRecord.findOne({ _id: req.params.id, userId: req.user!.id });
+    const original = await ServiceRecord.findOne({ _id: req.params.id, userId });
     if (!original) return res.status(404).json({ error: 'Záznam nenalezen.' });
     // Proveď update
     const record = await ServiceRecord.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user!.id },
+      { _id: req.params.id, userId },
       req.body,
       { new: true }
     );
@@ -105,7 +114,7 @@ router.put('/:id', authMiddleware, validateBody(serviceRecordUpdateSchema), asyn
       }
     }
     if (Object.keys(changes).length > 0) {
-      record.history.push({ date: new Date(), changes, author: req.user!.id });
+      record.history.push({ date: new Date(), changes, author: userId });
       await record.save();
     }
     res.json(record);
@@ -115,9 +124,10 @@ router.put('/:id', authMiddleware, validateBody(serviceRecordUpdateSchema), asyn
 });
 
 router.delete('/:id', authMiddleware, async (req, res, next) => {
-  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const userId = getUserId(req.user);
+  if (!userId) return res.status(401).json({ error: 'Neautorizováno.' });
   try {
-    const record = await ServiceRecord.findOneAndDelete({ _id: req.params.id, userId: req.user!.id });
+    const record = await ServiceRecord.findOneAndDelete({ _id: req.params.id, userId });
     if (!record) return res.status(404).json({ error: 'Záznam nenalezen.' });
     res.json({ message: 'Záznam byl smazán.' });
   } catch (e) {

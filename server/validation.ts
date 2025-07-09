@@ -20,6 +20,10 @@ export const serviceRecordSchema = z.object({
   serviceType: z.string().optional(),
   recordType: z.enum(['údržba', 'oprava', 'upgrade', 'garanční servis', 'jiné']).optional(),
   status: z.enum(['nový', 'čeká na díly', 'probíhá', 'hotovo', 'předáno', 'reklamace']).optional(),
+  quickFix: z.boolean().optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  repairStart: z.string().datetime().optional(),
+  timingType: z.enum(['manual', 'auto']).optional(),
 });
 
 export const serviceRecordUpdateSchema = serviceRecordSchema.partial();
@@ -29,6 +33,11 @@ export const bikeSchema = z.object({
   brand: z.string().optional(),
   model: z.string().optional(),
   year: z.number().int().min(1900).max(new Date().getFullYear()).optional(),
+  status: z.enum(['OK', 'NOT_OK']).optional(),
+  parts: z.string().optional(),
+  kilometers: z.number().int().min(0).optional(),
+  serviceType: z.enum(['UVODNI', 'KOMPLEXNI', 'QUICK_FIX']).optional(),
+  quickFix: z.boolean().optional(),
 });
 
 export const bikeUpdateSchema = bikeSchema.partial();

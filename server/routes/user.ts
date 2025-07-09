@@ -88,7 +88,7 @@ router.put('/profile', authMiddleware, async (req, res, next) => {
   try {
     const user = await User.findByIdAndUpdate(req.user.id, { name, email }, { new: true });
     if (!user) return res.status(404).json({ error: 'Uživatel nenalezen.' });
-    res.json({ name: user.name, email: user.email });
+    res.json({ name: user.name, email: user.email, id: user._id?.toString?.(), role: user.role, permissions: user.permissions, notificationPreferences: user.notificationPreferences, twoFactorEnabled: user.twoFactorEnabled });
   } catch (e) {
     next(e);
   }
@@ -100,10 +100,45 @@ router.get('/profile', authMiddleware, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ error: 'Uživatel nenalezen.' });
-    res.json({ name: user.name, email: user.email });
+    res.json({ name: user.name, email: user.email, id: user._id?.toString?.(), role: user.role, permissions: user.permissions, notificationPreferences: user.notificationPreferences, twoFactorEnabled: user.twoFactorEnabled });
   } catch (e) {
     next(e);
   }
+});
+
+// Nastavení hesla pro pozvaného uživatele (onboarding)
+router.post('/set-password', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Chybí e-mail nebo heslo.' });
+  // Validace síly hesla
+  if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+    return res.status(400).json({ error: 'Heslo musí mít alespoň 8 znaků, obsahovat písmeno a číslo.' });
+  }
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ error: 'Uživatel nenalezen.' });
+  if (user.password && user.password.length > 0) return res.status(400).json({ error: 'Heslo již bylo nastaveno.' });
+  const hash = await require('bcryptjs').hash(password, 10);
+  user.password = hash;
+  await user.save();
+  return res.json({ success: true, message: 'Heslo nastaveno. Nyní se můžete přihlásit.' });
+});
+
+// Načtení notifikačních preferencí
+router.get('/notification-preferences', authMiddleware, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const user = await User.findById(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Uživatel nenalezen.' });
+  res.json(user.notificationPreferences || {});
+});
+
+// Uložení notifikačních preferencí
+router.put('/notification-preferences', authMiddleware, async (req, res) => {
+  if (!req.user) return res.status(401).json({ error: 'Neautorizováno.' });
+  const user = await User.findById(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Uživatel nenalezen.' });
+  user.notificationPreferences = req.body;
+  await user.save();
+  res.json(user.notificationPreferences);
 });
 
 export default router;

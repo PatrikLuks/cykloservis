@@ -64,6 +64,10 @@ const ServiceDetailModal: React.FC<ServiceDetailModalProps> = ({
             </ul>
           </div>
         )}
+        {detailRecord.durationMinutes !== undefined && <p><b>Čas opravy:</b> {detailRecord.durationMinutes} min</p>}
+        {detailRecord.quickFix && <p style={{ color: 'orange', fontWeight: 'bold' }}><b>Rychlo fix</b></p>}
+        {detailRecord.repairStart && <p><b>Začátek opravy:</b> {new Date(detailRecord.repairStart).toLocaleString()}</p>}
+        {detailRecord.timingType && <p><b>Typ měření času:</b> {detailRecord.timingType === 'manual' ? 'Ruční' : 'Automatické (časovač)'}</p>}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Bike, ServiceRecord } from '../../../shared/types';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -27,6 +27,45 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, serviceRecords, reminders,
   const pieDataType = Object.entries(statsByType).map(([type, count]) => ({ name: type, value: count }));
   const pieDataStatus = Object.entries(statsByStatus).map(([status, count]) => ({ name: status, value: count }));
   const COLORS = ['#2563eb', '#059669', '#f59e42', '#e11d48', '#6366f1', '#fbbf24', '#10b981'];
+
+  // Strava statistiky
+  const [stravaStats, setStravaStats] = useState<{ totalKm: number; count: number; last: string } | null>(null);
+  const [stravaMsg, setStravaMsg] = useState('');
+  const fetchStravaStats = async () => {
+    setStravaMsg('');
+    try {
+      const token = localStorage.getItem('jwt');
+      const res = await fetch('http://localhost:3001/api/strava/activities', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Chyba při načítání aktivit');
+      if (!Array.isArray(data) || data.length === 0) return setStravaStats({ totalKm: 0, count: 0, last: '-' });
+      const totalKm = Math.round(data.reduce((sum, a) => sum + (a.distance || 0), 0) / 1000);
+      const count = data.length;
+      const last = new Date(data[0].start_date).toLocaleString();
+      setStravaStats({ totalKm, count, last });
+    } catch (e: any) {
+      setStravaMsg(e.message);
+    }
+  };
+
+  // AI doporučení
+  const [aiRecommendation, setAiRecommendation] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  useEffect(() => {
+    setAiRecommendation(''); setAiError('');
+    const token = localStorage.getItem('jwt');
+    if (!token) return;
+    setAiLoading(true);
+    fetch('http://localhost:3001/api/ai/recommendation', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => {
+        if (data.recommendation) setAiRecommendation(data.recommendation);
+        else setAiError(data.error || 'Chyba AI doporučení');
+      })
+      .catch(e => setAiError(e.message))
+      .finally(() => setAiLoading(false));
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-8">
@@ -120,6 +159,24 @@ const Dashboard: React.FC<DashboardProps> = ({ bikes, serviceRecords, reminders,
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+      <div className="mb-6">
+        <h3 className="font-bold mb-2 text-lg text-gray-700">Strava statistiky</h3>
+        <button className="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition mb-2" onClick={fetchStravaStats}>Načíst statistiky ze Stravy</button>
+        {stravaMsg && <div style={{ color: 'red' }}>{stravaMsg}</div>}
+        {stravaStats && (
+          <div className="mt-2">
+            <b>Počet aktivit:</b> {stravaStats.count}<br />
+            <b>Celkem km:</b> {stravaStats.totalKm}<br />
+            <b>Poslední aktivita:</b> {stravaStats.last}
+          </div>
+        )}
+      </div>
+      <div className="mb-6">
+        <h3 className="font-bold mb-2 text-lg text-gray-700">AI doporučení</h3>
+        {aiLoading && <div>Načítám doporučení…</div>}
+        {aiError && <div style={{ color: 'red' }}>{aiError}</div>}
+        {aiRecommendation && <div className="p-3 bg-blue-50 border-l-4 border-blue-400 text-blue-800 rounded">{aiRecommendation}</div>}
       </div>
     </div>
   );
