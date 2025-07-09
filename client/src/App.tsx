@@ -1,23 +1,3 @@
-<<<<<<< HEAD
-import { useEffect, useState } from 'react';
-import './App.css';
-
-function App() {
-  const [apiMessage, setApiMessage] = useState('');
-  const [count, setCount] = useState(0);
-  const [form, setForm] = useState({ email: '', password: '', name: '' });
-  const [isLogin, setIsLogin] = useState(true);
-  const [user, setUser] = useState<string | null>(null);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetch('http://localhost:3001/api/hello')
-      .then((res) => res.json())
-      .then((data) => setApiMessage(data.message))
-      .catch(() => setApiMessage('Nepodařilo se načíst zprávu z API.'));
-  }, []);
-
-=======
 import React, { useEffect, useState } from 'react';
 import './App.css';
 
@@ -69,7 +49,6 @@ function App() {
     // eslint-disable-next-line
   }, [user, token]);
 
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -88,19 +67,14 @@ function App() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Chyba');
       setUser(data.name || form.name);
-<<<<<<< HEAD
-=======
       setToken(data.token);
       localStorage.setItem('jwt', data.token);
       localStorage.setItem('user', data.name || form.name);
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
     } catch (err: any) {
       setError(err.message);
     }
   };
 
-<<<<<<< HEAD
-=======
   const handleLogout = () => {
     setUser(null);
     setToken(null);
@@ -401,15 +375,10 @@ function App() {
     }
   };
 
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
   if (user) {
     return (
       <div className="App">
         <h1>Vítej, {user}!</h1>
-<<<<<<< HEAD
-        <p>{apiMessage}</p>
-        <button onClick={() => setUser(null)}>Odhlásit se</button>
-=======
         <button onClick={handleLogout}>Odhlásit se</button>
         <section>
           <nav style={{ margin: '16px 0' }}>
@@ -612,7 +581,6 @@ function App() {
         <hr />
         <button onClick={fetchProtected}>Načíst chráněný obsah</button>
         {protectedMsg && <p style={{ color: 'blue' }}>{protectedMsg}</p>}
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
       </div>
     );
   }
@@ -620,10 +588,6 @@ function App() {
   return (
     <div className="App">
       <h1>Cykloservis</h1>
-<<<<<<< HEAD
-      <p style={{ color: 'green' }}>Zpráva z backendu: {apiMessage}</p>
-=======
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
       <form onSubmit={handleSubmit} className="card">
         {!isLogin && (
           <input
@@ -658,18 +622,12 @@ function App() {
       </button>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       <p className="read-the-docs">
-<<<<<<< HEAD
-        Toto je úvodní obrazovka. Další funkce budou postupně přibývat.
-=======
         Po přihlášení lze volat chráněné API.
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
       </p>
     </div>
   );
 }
 
-<<<<<<< HEAD
-=======
 function BikeManager({ bikes, setBikes, token }: { bikes: any[], setBikes: (b: any[]) => void, token: string | null }) {
   const [form, setForm] = useState({ name: '', brand: '', model: '', year: '' });
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -861,5 +819,4 @@ function ProfileSection({ token, user, setUser }: { token: string | null, user: 
   );
 }
 
->>>>>>> 2bfa6d3 (Rozšíření servisní knihy: historie změn, autor změny, undo, cena, typ úkonu, opravy typů)
 export default App;
