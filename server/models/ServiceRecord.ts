@@ -19,35 +19,13 @@ const serviceRecordSchema = new mongoose.Schema({
     changes: { type: Object, required: true },
     author: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   }],
+  recordType: { type: String, enum: ['údržba', 'oprava', 'upgrade', 'garanční servis', 'jiné'], default: 'údržba' },
+  status: { type: String, enum: ['nový', 'čeká na díly', 'probíhá', 'hotovo', 'předáno', 'reklamace'], default: 'nový' },
 });
 
 // Přidat hook pro aktualizaci updatedAt při změně
 serviceRecordSchema.pre('findOneAndUpdate', function(next) {
   this.set({ updatedAt: new Date() });
-  next();
-});
-
-// Hook pro ukládání historie změn včetně autora
-serviceRecordSchema.pre('findOneAndUpdate', async function(next) {
-  const update: Record<string, any> = this.getUpdate() as any;
-  const record = await this.model.findOne(this.getQuery()) as Record<string, any> | null;
-  const userId = (this as any).getOptions?.().context?.userId;
-  if (record) {
-    const changes: Record<string, any> = {};
-    for (const key in update) {
-      if (key !== 'updatedAt' && update[key] !== undefined && record[key] !== update[key]) {
-        changes[key] = { from: record[key], to: update[key] };
-      }
-    }
-    if (Object.keys(changes).length > 0) {
-      this.set({
-        $push: { history: { date: new Date(), changes, author: userId } },
-        updatedAt: new Date()
-      });
-    } else {
-      this.set({ updatedAt: new Date() });
-    }
-  }
   next();
 });
 
